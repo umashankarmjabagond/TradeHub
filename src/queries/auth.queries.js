@@ -1,7 +1,7 @@
 const { query } = require("../config/db");
 
 const findUserByEmail = async (email) => {
-  return query("SELECT id FROM users WHERE email = $1", [email]);
+  return query("SELECT * FROM users WHERE email = $1", [email]);
 };
 
 const createUser = async ({

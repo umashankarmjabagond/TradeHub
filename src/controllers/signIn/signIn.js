@@ -6,6 +6,8 @@ const signIn = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log("Sign-in attempt for email:", email, password);
+
     // 1. Validation
     if (!email || !password) {
       return res
@@ -16,6 +18,8 @@ const signIn = async (req, res) => {
     // 2. Find user
     const result = await findUserByEmail(email);
     const user = result.rows[0];
+
+    console.log("User found:", user);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
