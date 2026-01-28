@@ -1,6 +1,9 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { findUserByEmail } from "../../queries/auth.queries.js";
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+// import { findUserByEmail } from "../../queries/auth.queries.js";
+
+const findUserByEmail =
+  require("../../queries/auth.queries.js").findUserByEmail;
 
 const signIn = async (req, res) => {
   try {
@@ -60,4 +63,4 @@ const signIn = async (req, res) => {
   }
 };
 
-export { signIn };
+module.exports = { signIn };

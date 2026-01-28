@@ -24,10 +24,10 @@
 
 // module.exports = connectDB;
 
-import pkg from "pg";
-import dotenv from "dotenv";
+const { Pool } = require("pg");
+const dotenv = require("dotenv");
+
 dotenv.config();
-const { Pool } = pkg;
 
 console.log("DATABASE_URL:", process.env.DATABASE_URL);
 
@@ -38,4 +38,8 @@ const pool = new Pool({
   },
 });
 
-export const query = (text, params) => pool.query(text, params);
+const query = (text, params) => pool.query(text, params);
+
+module.exports = {
+  query,
+};

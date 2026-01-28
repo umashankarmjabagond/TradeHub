@@ -1,9 +1,8 @@
-import {
+const {
   getMainCategories,
   getCategoryBySlug,
-  getChildCategories,
-} from "../../queries/category.queries.js";
-
+  getAllDescendants,
+} = require("../../queries/category.queries.js");
 /**
  * GET /api/categories/main
  * Sidebar main categories
@@ -19,46 +18,81 @@ const fetchMainCategories = async (req, res) => {
 };
 
 /**
- * Recursive function to build category tree
+ * Convert flat category rows into IndiaMART-style structure
  */
-const buildCategoryTree = async (category) => {
-  const childrenResult = await getChildCategories(category.id);
-  const children = childrenResult.rows;
+const buildStructuredCategoryResponse = (mainCategory, rows) => {
+  const level1Map = {}; // Fruits & Vegetables
+  const level2Map = {}; // Fresh Fruits, Dry Fruits
 
-  if (children.length === 0) {
-    return { ...category, children: [] };
-  }
+  // Level 1
+  rows.forEach((row) => {
+    if (row.level === 1) {
+      level1Map[row.id] = {
+        title: row.name,
+        groups: [],
+      };
+    }
+  });
 
-  const treeChildren = [];
-  for (const child of children) {
-    const subtree = await buildCategoryTree(child);
-    treeChildren.push(subtree);
-  }
+  // Level 2
+  rows.forEach((row) => {
+    if (row.level === 2) {
+      level2Map[row.id] = {
+        title: row.name,
+        items: [],
+      };
 
-  return { ...category, children: treeChildren };
+      if (level1Map[row.parent_id]) {
+        level1Map[row.parent_id].groups.push(level2Map[row.id]);
+      }
+    }
+  });
+
+  // Level 3
+  rows.forEach((row) => {
+    if (row.level === 3) {
+      if (level2Map[row.parent_id]) {
+        level2Map[row.parent_id].items.push(row.name);
+      }
+    }
+  });
+
+  return {
+    mainCategory: mainCategory.name,
+    sections: Object.values(level1Map),
+  };
 };
 
 /**
  * GET /api/categories/tree/:slug
- * Right panel content
+ * Right panel content (IndiaMART style)
  */
 const fetchCategoryTreeBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
+    // 1️⃣ Get main category (Farm, Electronics, etc.)
     const categoryResult = await getCategoryBySlug(slug);
-    const category = categoryResult.rows[0];
+    const mainCategory = categoryResult.rows[0];
 
-    if (!category) {
+    if (!mainCategory) {
       return res.status(404).json({ message: "Category not found" });
     }
 
-    const tree = await buildCategoryTree(category);
-    res.status(200).json(tree);
+    // 2️⃣ Fetch all children in ONE query (no recursion)
+    const descendantsResult = await getAllDescendants(mainCategory.id);
+
+    // 3️⃣ Transform DB rows → UI-ready JSON
+    const structuredData = buildStructuredCategoryResponse(
+      mainCategory,
+      descendantsResult.rows,
+    );
+
+    res.status(200).json(structuredData);
   } catch (error) {
     console.error("Fetch category tree error:", error);
     res.status(500).json({ message: "Failed to fetch category tree" });
   }
 };
 
-export { fetchMainCategories, fetchCategoryTreeBySlug };
+module.exports = { fetchMainCategories, fetchCategoryTreeBySlug };

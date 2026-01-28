@@ -1,42 +1,43 @@
-const { query } = require("../config/db");
+const { query } = require("../config/db.js");
 
-/**
- * Get all main categories (sidebar)
- */
-const getMainCategories = async () => {
+const getMainCategories = () => {
   return query(`
     SELECT id, name, slug
     FROM categories
-    WHERE parent_id IS NULL
+    WHERE level = 0
     ORDER BY name
   `);
 };
 
-/**
- * Get category by slug
- */
-const getCategoryBySlug = async (slug) => {
+const getCategoryBySlug = (slug) => {
   return query(
     `
     SELECT id, name, slug
     FROM categories
     WHERE slug = $1
-    `,
+    LIMIT 1
+  `,
     [slug],
   );
 };
 
-/**
- * Get children categories by parent_id
- */
-const getChildCategories = async (parentId) => {
+const getAllDescendants = (parentId) => {
   return query(
     `
-    SELECT id, name, slug
+    SELECT id, name, slug, parent_id, level
     FROM categories
     WHERE parent_id = $1
-    ORDER BY name
-    `,
+       OR parent_id IN (
+         SELECT id FROM categories WHERE parent_id = $1
+       )
+       OR parent_id IN (
+         SELECT id FROM categories
+         WHERE parent_id IN (
+           SELECT id FROM categories WHERE parent_id = $1
+         )
+       )
+    ORDER BY level, name
+  `,
     [parentId],
   );
 };
@@ -44,5 +45,5 @@ const getChildCategories = async (parentId) => {
 module.exports = {
   getMainCategories,
   getCategoryBySlug,
-  getChildCategories,
+  getAllDescendants,
 };
