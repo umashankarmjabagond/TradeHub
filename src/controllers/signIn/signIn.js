@@ -7,59 +7,65 @@ const findUserByEmail =
 
 const signIn = async (req, res) => {
   try {
+    console.log("Signin body:", req.body);
+
+    if (!req.body) {
+      return res.status(400).json({ message: "Request body missing" });
+    }
+
     const { email, password } = req.body;
 
-    console.log("Sign-in attempt for email:", email, password);
-
-    // 1. Validation
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+      return res.status(400).json({
+        message: "Email and password are required",
+      });
     }
 
-    // 2. Find user
-    const result = await findUserByEmail(email);
-    const user = result.rows[0];
-
-    console.log("User found:", user);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // 3. Compare password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid password" });
-    }
-
-    // 4. Generate JWT
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" },
+    // 1️⃣ Fetch user
+    const result = await query(
+      "SELECT id, email, password FROM users WHERE email = $1",
+      [email],
     );
 
-    // 5. Response
-    res.status(200).json({
-      message: "Login successful",
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // 2️⃣ Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    // 3️⃣ Generate token
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is missing");
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" },
+    );
+
+    return res.status(200).json({
+      message: "Signin successful",
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        contact: user.contact,
-      },
     });
-  } catch (error) {
-    console.error("Sign-in error:", error);
-    res.status(500).json({ message: "Server error" });
+  } catch (err) {
+    console.error("Signin error FULL:", err);
+
+    return res.status(500).json({
+      message: "Server error",
+      error: err.message, // 👈 IMPORTANT
+    });
   }
 };
 
