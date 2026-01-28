@@ -3,6 +3,8 @@ const cors = require("cors");
 
 const app = express();
 
+require("./config/db");
+
 app.use(cors());
 app.use(express.json());
 
