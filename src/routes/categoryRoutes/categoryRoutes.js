@@ -3,6 +3,7 @@ const {
   fetchMainCategories,
   fetchCategoryTreeBySlug,
   fetchAllCategoriesAndSubData,
+  fetchLandingCategoriesFlattened,
 } = require("../../controllers/category/categoryController.js");
 
 const router = express.Router();
@@ -10,5 +11,6 @@ const router = express.Router();
 router.get("/main", fetchMainCategories);
 router.get("/tree/:slug", fetchCategoryTreeBySlug);
 router.get("/landing/categories", fetchAllCategoriesAndSubData);
+router.get("/landing/flattened", fetchLandingCategoriesFlattened);
 
 module.exports = router;
