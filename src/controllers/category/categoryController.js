@@ -2,6 +2,7 @@ const {
   getMainCategories,
   getCategoryBySlug,
   getAllDescendants,
+  getAllMarketCategoriesAndSubData,
 } = require("../../queries/category.queries.js");
 /**
  * GET /api/categories/main
@@ -95,4 +96,49 @@ const fetchCategoryTreeBySlug = async (req, res) => {
   }
 };
 
-module.exports = { fetchMainCategories, fetchCategoryTreeBySlug };
+const fetchAllCategoriesAndSubData = async (req, res) => {
+  try {
+    const { rows } = await getAllMarketCategoriesAndSubData();
+
+    console.log("Market Categories Rows:", rows);
+
+    // transform flat rows into nested structure
+    const result = {};
+
+    rows.forEach((row) => {
+      if (!result[row.main_id]) {
+        result[row.main_id] = {
+          id: row.main_id,
+          name: row.main_name,
+          slug: row.main_slug,
+          subCategories: [],
+        };
+      }
+
+      if (row.sub_id) {
+        result[row.main_id].subCategories.push({
+          id: row.sub_id,
+          name: row.sub_name,
+          slug: row.sub_slug,
+        });
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: Object.values(result),
+    });
+  } catch (error) {
+    console.error("fetchMarketCategories error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch market categories",
+    });
+  }
+};
+
+module.exports = {
+  fetchMainCategories,
+  fetchCategoryTreeBySlug,
+  fetchAllCategoriesAndSubData,
+};

@@ -42,8 +42,25 @@ const getAllDescendants = (parentId) => {
   );
 };
 
+const getAllMarketCategoriesAndSubData = () => {
+  return query(`
+  SELECT
+    main.id   AS main_id,
+    main.name AS main_name,
+    main.slug AS main_slug,
+    sub.id    AS sub_id,
+    sub.name  AS sub_name,
+    sub.slug  AS sub_slug
+  FROM categories main
+  LEFT JOIN categories sub ON sub.parent_id = main.id
+  WHERE main.parent_id IS NULL
+  ORDER BY main.name, sub.name;
+`);
+};
+
 module.exports = {
   getMainCategories,
   getCategoryBySlug,
   getAllDescendants,
+  getAllMarketCategoriesAndSubData,
 };
