@@ -3,6 +3,7 @@ const {
   getCategoryBySlug,
   getAllDescendants,
   getAllMarketCategoriesAndSubData,
+  getLandingFlattenedData,
 } = require("../../queries/category.queries.js");
 /**
  * GET /api/categories/main
@@ -100,12 +101,10 @@ const fetchAllCategoriesAndSubData = async (req, res) => {
   try {
     const { rows } = await getAllMarketCategoriesAndSubData();
 
-    console.log("Market Categories Rows:", rows);
-
-    // transform flat rows into nested structure
     const result = {};
 
     rows.forEach((row) => {
+      // MAIN CATEGORY
       if (!result[row.main_id]) {
         result[row.main_id] = {
           id: row.main_id,
@@ -115,11 +114,31 @@ const fetchAllCategoriesAndSubData = async (req, res) => {
         };
       }
 
-      if (row.sub_id) {
-        result[row.main_id].subCategories.push({
+      // SUB CATEGORY
+      let subCategory = result[row.main_id].subCategories.find(
+        (s) => s.id === row.sub_id,
+      );
+
+      if (!subCategory && row.sub_id) {
+        subCategory = {
           id: row.sub_id,
           name: row.sub_name,
           slug: row.sub_slug,
+          previewItems: [],
+        };
+        result[row.main_id].subCategories.push(subCategory);
+      }
+
+      // PREVIEW ITEMS (LEVEL 3)
+      if (
+        row.item_id &&
+        subCategory &&
+        subCategory.previewItems.length < 5 // limit chips
+      ) {
+        subCategory.previewItems.push({
+          id: row.item_id,
+          name: row.item_name,
+          slug: row.item_slug,
         });
       }
     });
@@ -137,8 +156,61 @@ const fetchAllCategoriesAndSubData = async (req, res) => {
   }
 };
 
+const fetchLandingCategoriesFlattened = async (req, res) => {
+  try {
+    const { rows } = await getLandingFlattenedData();
+
+    const result = {};
+
+    rows.forEach((r) => {
+      // main
+      if (!result[r.main_slug]) {
+        result[r.main_slug] = {
+          id: r.main_id,
+          name: r.main_name,
+          slug: r.main_slug,
+          groups: {},
+        };
+      }
+
+      // group
+      if (!result[r.main_slug].groups[r.group_slug]) {
+        result[r.main_slug].groups[r.group_slug] = {
+          id: r.group_id,
+          name: r.group_name,
+          slug: r.group_slug,
+          products: [],
+        };
+      }
+
+      // product
+      if (r.product_name) {
+        result[r.main_slug].groups[r.group_slug].products.push(r.product_name);
+      }
+    });
+
+    // convert groups object → array
+    const response = Object.values(result).map((main) => ({
+      ...main,
+      groups: Object.values(main.groups),
+    }));
+
+    return res.json({
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch landing data",
+    });
+  }
+};
+
 module.exports = {
   fetchMainCategories,
   fetchCategoryTreeBySlug,
   fetchAllCategoriesAndSubData,
+  fetchLandingCategoriesFlattened,
 };
