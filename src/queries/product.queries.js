@@ -1,10 +1,16 @@
 const { query } = require("../config/db.js");
 
-const getLocationIdBySlug = async (slug) => {
+const getLocationId = async (value) => {
   const { rows } = await query(
-    `SELECT id FROM locations WHERE slug = $1 LIMIT 1`,
-    [slug],
+    `
+    SELECT id
+    FROM locations
+    WHERE slug = $1 OR name = $1
+    LIMIT 1
+    `,
+    [value],
   );
+
   return rows.length ? rows[0].id : null;
 };
 
@@ -47,6 +53,6 @@ const getProducts = ({ product, categorySlug, locationId }) => {
 };
 
 module.exports = {
-  getLocationIdBySlug,
+  getLocationId,
   getProducts,
 };
