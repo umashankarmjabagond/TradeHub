@@ -1,17 +1,15 @@
 const {
   getProducts,
   getLocationIdBySlug,
+  getLocationId,
 } = require("../../queries/product.queries.js");
 
 const fetchProducts = async (req, res) => {
   try {
     const { product, category, location } = req.query;
 
-    let locationId = null;
-
-    if (location) {
-      locationId = await getLocationIdBySlug(location);
-    }
+    const locationId = location ? await getLocationId(location) : null;
+    console.log("locationId:", locationId);
 
     const { rows } = await getProducts({
       product,
