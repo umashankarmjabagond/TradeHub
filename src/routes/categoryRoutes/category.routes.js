@@ -4,7 +4,7 @@ const {
   fetchCategoryTreeBySlug,
   fetchAllCategoriesAndSubData,
   fetchLandingCategoriesFlattened,
-} = require("../../controllers/category/categoryController.js");
+} = require("../../controllers/category/category.controller.js");
 
 const router = express.Router();
 

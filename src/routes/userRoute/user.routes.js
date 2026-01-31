@@ -1,13 +1,16 @@
 const express = require("express");
-const { editProfile, getProfile } = require("../../controllers/user/user");
 const {
   updateCompanyInfo,
   getCompanyDetails,
-} = require("../../controllers/user/company");
+} = require("../../controllers/user/company.controller");
 const {
   updateBankDetails,
   getBankDetails,
-} = require("../../controllers/user/bank");
+} = require("../../controllers/user/bank.controller");
+const {
+  editProfile,
+  getProfile,
+} = require("../../controllers/user/user.controller");
 
 const router = express.Router();
 
