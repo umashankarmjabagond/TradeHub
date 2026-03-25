@@ -52,7 +52,127 @@ const getProducts = ({ product, categorySlug, locationId }) => {
   );
 };
 
+// Admin: Create product
+const createProduct = async ({
+  name,
+  slug,
+  price,
+  quantity,
+  imageUrl,
+  categoryId,
+  locationId,
+  rating,
+  description,
+  userId,
+}) => {
+  return query(
+    `
+    INSERT INTO products (
+      name,
+      slug,
+      price,
+      quantity,
+      image_url,
+      category_id,
+      location_id,
+      rating,
+      description,
+      status,
+      created_by
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    RETURNING *
+    `,
+    [
+      name,
+      slug,
+      price,
+      quantity,
+      imageUrl,
+      categoryId,
+      locationId,
+      rating,
+      description,
+      "active",
+      userId,
+    ],
+  );
+};
+
+// Admin: Update product
+const updateProduct = async ({
+  id,
+  name,
+  slug,
+  price,
+  quantity,
+  imageUrl,
+  categoryId,
+  rating,
+  description,
+}) => {
+  const updates = [];
+  const values = [];
+  let paramCount = 1;
+
+  if (name !== undefined) {
+    updates.push(`name = $${paramCount++}`);
+    values.push(name);
+  }
+  if (slug !== undefined) {
+    updates.push(`slug = $${paramCount++}`);
+    values.push(slug);
+  }
+  if (price !== undefined) {
+    updates.push(`price = $${paramCount++}`);
+    values.push(price);
+  }
+  if (quantity !== undefined) {
+    updates.push(`quantity = $${paramCount++}`);
+    values.push(quantity);
+  }
+  if (imageUrl !== undefined) {
+    updates.push(`image_url = $${paramCount++}`);
+    values.push(imageUrl);
+  }
+  if (categoryId !== undefined) {
+    updates.push(`category_id = $${paramCount++}`);
+    values.push(categoryId);
+  }
+  if (rating !== undefined) {
+    updates.push(`rating = $${paramCount++}`);
+    values.push(rating);
+  }
+  if (description !== undefined) {
+    updates.push(`description = $${paramCount++}`);
+    values.push(description);
+  }
+
+  if (updates.length === 0) {
+    return query("SELECT * FROM products WHERE id = $1", [id]);
+  }
+
+  updates.push(`updated_at = NOW()`);
+  values.push(id);
+
+  return query(
+    `UPDATE products SET ${updates.join(", ")} WHERE id = $${paramCount} RETURNING *`,
+    values,
+  );
+};
+
+// Admin: Delete product (soft delete - mark as inactive)
+const deleteProduct = async (id) => {
+  return query(
+    "UPDATE products SET status = $1, updated_at = NOW() WHERE id = $2",
+    ["inactive", id],
+  );
+};
+
 module.exports = {
   getLocationId,
   getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
 };
