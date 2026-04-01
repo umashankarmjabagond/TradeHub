@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 
 // Verify JWT token
 const verifyToken = (req, res, next) => {
+  console.log("verifyToken called with headers:", req.headers);
   const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
@@ -9,6 +10,8 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
+    console.log("Verifying JWT_SECRET:", process.env.JWT_SECRET);
+    console.log("Token to verify:", token);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();

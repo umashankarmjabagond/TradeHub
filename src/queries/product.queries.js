@@ -1,5 +1,31 @@
 const { query } = require("../config/db.js");
 
+const searchProductsFromCategories = async (value) => {
+  const { rows } = await query(
+    `
+  SELECT id, name, slug
+  FROM categories
+  WHERE level = 3
+    AND is_active = TRUE
+    AND (
+      name ILIKE '%' || $1 || '%'
+      OR slug ILIKE '%' || $1 || '%'
+    )
+  ORDER BY 
+    CASE 
+      WHEN LOWER(name) = LOWER($1) THEN 1         -- exact match
+      WHEN LOWER(name) LIKE LOWER($1) || '%' THEN 2  -- starts with
+      ELSE 3                                      -- contains
+    END,
+    name
+  LIMIT 20
+  `,
+    [value],
+  );
+
+  return rows;
+};
+
 const getLocationId = async (value) => {
   const { rows } = await query(
     `
@@ -31,17 +57,16 @@ const getProducts = ({ product, categorySlug, locationId }) => {
     SELECT
       p.id,
       p.name,
-      p.slug,
       p.price,
       p.quantity,
       p.image_url,
       p.rating,
       c.name AS category,
       c.slug AS category_slug,
-      l.name AS location
+      COALESCE(l.name, 'No Location') AS location
     FROM products p
     JOIN categories c ON c.id = p.category_id
-    JOIN locations l ON l.id = p.location_id
+    LEFT JOIN locations l ON l.id = p.location_id   -- ✅ FIXED
     WHERE p.status = 'active'
       AND ($1::text IS NULL OR p.name ILIKE '%' || $1 || '%')
       AND ($2::text IS NULL OR c.slug = $2)
@@ -68,24 +93,22 @@ const createProduct = async ({
   return query(
     `
     INSERT INTO products (
-      name,
-      slug,
-      price,
-      quantity,
-      image_url,
-      category_id,
-      location_id,
-      rating,
-      description,
-      status,
-      created_by
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+  name,
+  price,
+  quantity,
+  image_url,
+  category_id,
+  location_id,
+  rating,
+  description,
+  status,
+  user_id
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *
     `,
     [
       name,
-      slug,
       price,
       quantity,
       imageUrl,
@@ -169,10 +192,26 @@ const deleteProduct = async (id) => {
   );
 };
 
+const createProductImage = async ({ productId, imageUrl, isPrimary }) => {
+  return query(
+    `
+    INSERT INTO product_images (
+      product_id,
+      image_url,
+      is_primary
+    )
+    VALUES ($1, $2, $3)
+    `,
+    [productId, imageUrl, isPrimary],
+  );
+};
+
 module.exports = {
+  searchProductsFromCategories,
   getLocationId,
   getProducts,
   createProduct,
   updateProduct,
   deleteProduct,
+  createProductImage,
 };
