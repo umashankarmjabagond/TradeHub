@@ -1,21 +1,27 @@
 const {
   getProducts,
-  getLocationIdBySlug,
   getLocationId,
   createProduct,
   updateProduct,
   deleteProduct,
   searchProductsFromCategories,
   createProductImage,
+  deleteProductImage,
+  getProductImages,
+  resetPrimaryImages,
+  updateProductPrimaryImage,
+  getProductDetails,
 } = require("../../queries/product.queries.js");
+
 const { uploadFromBuffer } = require("../../utils/helper.js");
+
+// FETCH PRODUCTS
 
 const fetchProducts = async (req, res) => {
   try {
     const { product, category, location } = req.query;
 
     const locationId = location ? await getLocationId(location) : null;
-    console.log("locationId:", locationId);
 
     const { rows } = await getProducts({
       product,
@@ -32,9 +38,9 @@ const fetchProducts = async (req, res) => {
   }
 };
 
-const searchProducts = async (req, res) => {
-  console.log("searchProducts called with query:", req.query);
+// SEARCH
 
+const searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
 
@@ -59,11 +65,9 @@ const searchProducts = async (req, res) => {
   }
 };
 
-// Admin: Create product
-const addProduct = async (req, res) => {
-  console.log("addProduct called with body:", req.body);
-  console.log("FILES:", req.files);
+// ADD PRODUCT
 
+const addProduct = async (req, res) => {
   try {
     const {
       name,
@@ -76,45 +80,44 @@ const addProduct = async (req, res) => {
       description,
     } = req.body;
 
-    // ✅ map productId → categoryId
     const categoryId = bodyCategoryId || req.body.productId;
-
     const files = req.files;
 
-    // ✅ Validation (location removed)
     if (!name || !categoryId) {
       return res.status(400).json({
         message: "name and categoryId are required",
       });
     }
 
-    // ✅ Upload images to Cloudinary
-    let uploadedImages = [];
-
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        const result = await uploadFromBuffer(files[i].buffer);
-
-        uploadedImages.push({
-          imageUrl: result.secure_url,
-          isPrimary: i === 0,
-        });
-      }
+    if (!files || files.length === 0) {
+      return res.status(400).json({
+        message: "At least one product image is required",
+      });
     }
 
-    // ✅ Primary image
-    const primaryImage =
-      uploadedImages.find((img) => img.isPrimary)?.imageUrl || null;
+    let uploadedImages = [];
 
-    // ✅ Create product
+    for (let i = 0; i < files.length; i++) {
+      const result = await uploadFromBuffer(files[i].buffer);
+
+      uploadedImages.push({
+        imageUrl: result.secure_url,
+        isPrimary: false,
+      });
+    }
+
+    uploadedImages[0].isPrimary = true;
+
+    const primaryImage = uploadedImages[0].imageUrl;
+
     const result = await createProduct({
       name,
-      slug: slug || name.toLowerCase().replace(/\s+/g, "-"),
+      slug: slug || name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
       price: price || 0,
       quantity: quantity || 0,
       imageUrl: primaryImage,
       categoryId,
-      locationId: locationId || null, // ✅ now optional
+      locationId: locationId || null,
       rating: rating || 0,
       description: description || "",
       userId: req.user?.id || null,
@@ -122,7 +125,6 @@ const addProduct = async (req, res) => {
 
     const productId = result.rows[0].id;
 
-    // ✅ Save images in DB
     await Promise.all(
       uploadedImages.map((img) =>
         createProductImage({
@@ -145,28 +147,72 @@ const addProduct = async (req, res) => {
     });
   }
 };
-// Admin: Update product
+
+// EDIT PRODUCT
+
 const editProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      name,
-      slug,
-      price,
-      quantity,
-      imageUrl,
-      categoryId,
-      rating,
-      description,
-    } = req.body;
+    const { name, slug, price, quantity, categoryId, rating, description } =
+      req.body;
+
+    const files = req.files;
+
+    let primaryImage;
+
+    // If new images uploaded
+
+    if (files && files.length > 0) {
+      let uploadedImages = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const result = await uploadFromBuffer(files[i].buffer);
+
+        uploadedImages.push({
+          imageUrl: result.secure_url,
+          isPrimary: false,
+        });
+      }
+
+      uploadedImages[0].isPrimary = true;
+      primaryImage = uploadedImages[0].imageUrl;
+
+      //  1. Get existing images
+      const { rows: existingImages } = await getProductImages(id);
+
+      //  2. Delete all old images
+      for (const img of existingImages) {
+        await deleteProductImage(img.id);
+      }
+
+      //  3. Insert new images
+      await Promise.all(
+        uploadedImages.map((img) =>
+          createProductImage({
+            productId: id,
+            imageUrl: img.imageUrl,
+            isPrimary: img.isPrimary,
+          }),
+        ),
+      );
+
+      //  4. Sync product table
+      await updateProductPrimaryImage(id, primaryImage);
+    }
+
+    // Update product
 
     const result = await updateProduct({
       id,
       name,
-      slug,
+      slug:
+        slug ||
+        (name
+          ? name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now()
+          : undefined),
       price,
       quantity,
-      imageUrl,
+      imageUrl: primaryImage,
       categoryId,
       rating,
       description,
@@ -189,7 +235,8 @@ const editProduct = async (req, res) => {
   }
 };
 
-// Admin: Delete product
+// DELETE PRODUCT
+
 const removeProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -212,10 +259,33 @@ const removeProduct = async (req, res) => {
   }
 };
 
+const fetchProductDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await getProductDetails(id);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Fetch product details error:", error);
+    return res.status(500).json({
+      message: "Failed to fetch product details",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   fetchProducts,
   searchProducts,
   addProduct,
   editProduct,
   removeProduct,
+  fetchProductDetails,
 };
