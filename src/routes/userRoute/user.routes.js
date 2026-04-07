@@ -1,24 +1,23 @@
 const express = require("express");
-const {
-  updateCompanyInfo,
-  getCompanyDetails,
-} = require("../../controllers/user/company.controller");
-const {
-  updateBankDetails,
-  getBankDetails,
-} = require("../../controllers/user/bank.controller");
+
 const {
   editProfile,
   getProfile,
+  updateCompanyInfo,
+  getCompanyDetails,
+  getBankDetails,
+  updateBankDetails,
 } = require("../../controllers/user/user.controller");
+const { verifyToken } = require("../../middleware/auth.middleware");
 
 const router = express.Router();
 
-router.put("/edit-profile", editProfile);
-router.put("/edit-company", updateCompanyInfo);
-router.put("/edit-bank", updateBankDetails);
-router.post("/get-profile", getProfile);
-router.post("/get-companies", getCompanyDetails);
-router.post("/get-banks", getBankDetails);
+router.put("/edit-profile", verifyToken, editProfile);
+router.put("/edit-company", verifyToken, updateCompanyInfo);
+router.put("/edit-bank", verifyToken, updateBankDetails);
+
+router.post("/get-profile", verifyToken, getProfile);
+router.post("/get-companies", verifyToken, getCompanyDetails);
+router.post("/get-banks", verifyToken, getBankDetails);
 
 module.exports = router;

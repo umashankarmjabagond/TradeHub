@@ -108,8 +108,52 @@ const getUploadSignature = async (req, res) => {
   }
 };
 
+const uploadProfileImage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        message: "No file uploaded",
+      });
+    }
+
+    // upload using buffer (same pattern as product)
+    const result = await uploadFromBuffer(
+      file.buffer,
+      `tradehub/users/${userId}`,
+    );
+
+    const imageUrl = result.secure_url;
+
+    // ✅ update user profile_pic
+    await query(
+      `
+      UPDATE users
+      SET profile_pic = $1, updated_at = NOW()
+      WHERE id = $2
+      `,
+      [imageUrl, userId],
+    );
+
+    return res.status(200).json({
+      message: "Profile image uploaded successfully",
+      profile_pic: imageUrl,
+    });
+  } catch (error) {
+    console.error("Profile upload error:", error);
+    return res.status(500).json({
+      message: "Failed to upload profile image",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   uploadCategoryImage,
   uploadProductImages,
   getUploadSignature,
+  uploadProfileImage,
 };

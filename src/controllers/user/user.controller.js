@@ -1,67 +1,75 @@
-const users = require("../../models/auth/auth.js");
+const {
+  getUserProfile,
+  updateUserProfile,
+  getCompany,
+  upsertCompany,
+  getBank,
+  upsertBank,
+} = require("../../queries/user.queries.js");
 
-// Get Profile Details
 const getProfile = async (req, res) => {
-  console.log("passed id for profile from fe", req.body);
   try {
-    console.log("testing>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...", req);
-    const { id } = req.body;
+    const userId = req.user.id;
 
-    if (!id) {
-      return res.status(400).json({ message: "User id is required" });
-    }
+    const result = await getUserProfile(userId);
 
-    const user = await users.findById(id).select("-password");
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.status(200).json({
-      message: "Profile fetched successfully",
-      user,
-    });
+    return res.status(200).json(result.rows[0]);
   } catch (err) {
-    console.error("Error fetching profile:", err);
-    res.status(500).json({
-      message: "Server error",
-      error: err.message,
-    });
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch profile" });
   }
 };
 
-// Edit Profile
 const editProfile = async (req, res) => {
   try {
-    const {
-      id,
-      name,
-      contact,
-      alternateContact,
-      alternateEmail,
-      address,
-      about,
-    } = req.body;
+    const userId = req.user.id;
 
-    console.log("data from front end in req body", req.body);
+    const result = await updateUserProfile(userId, req.body);
 
-    if (!id) return res.status(400).json({ message: "User id is required" });
-
-    const updatedUser = await users.findByIdAndUpdate(
-      id,
-      { name, contact, alternateContact, alternateEmail, address, about },
-      { new: true },
-    );
-
-    if (!updatedUser)
-      return res.status(404).json({ message: "User not found" });
-    res
-      .status(200)
-      .json({ message: "Profile updated successfully", user: updatedUser });
+    res.status(200).json(result.rows[0]);
   } catch (err) {
-    console.error("Error updating profile:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Failed to update profile" });
   }
 };
 
-module.exports = { editProfile, getProfile };
+const getCompanyDetails = async (req, res) => {
+  const userId = req.user.id;
+
+  const result = await getCompany(userId);
+
+  res.status(200).json(result.rows[0]);
+};
+
+const updateCompanyInfo = async (req, res) => {
+  const userId = req.user.id;
+
+  const result = await upsertCompany(userId, req.body);
+
+  res.status(200).json(result.rows[0]);
+};
+
+const getBankDetails = async (req, res) => {
+  const userId = req.user.id;
+
+  const result = await getBank(userId);
+
+  res.status(200).json(result.rows[0]);
+};
+
+const updateBankDetails = async (req, res) => {
+  const userId = req.user.id;
+
+  const result = await upsertBank(userId, req.body);
+
+  res.status(200).json(result.rows[0]);
+};
+
+module.exports = {
+  getProfile,
+  editProfile,
+  getCompanyDetails,
+  updateCompanyInfo,
+  getBankDetails,
+  updateBankDetails,
+};
