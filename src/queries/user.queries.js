@@ -23,44 +23,32 @@ const getUserProfile = async (userId) => {
 };
 
 const updateUserProfile = async (userId, data) => {
-  const {
-    name,
-    email,
-    mobile,
-    alt_email,
-    alt_mobile,
-    address,
-    city,
-    state,
-    country,
-  } = data;
-
   return query(
     `
     UPDATE users SET
-      name = $1,
-      email = $2,
-      mobile = $3,
-      alt_email = $4,
-      alt_mobile = $5,
-      address = $6,
-      city = $7,
-      state = $8,
-      country = $9,
+      name = COALESCE($1, name),
+      email = COALESCE($2, email),
+      mobile = COALESCE($3, mobile),
+      alt_email = COALESCE($4, alt_email),
+      alt_mobile = COALESCE($5, alt_mobile),
+      address = COALESCE($6, address),
+      city = COALESCE($7, city),
+      state = COALESCE($8, state),
+      country = COALESCE($9, country),
       updated_at = NOW()
     WHERE id = $10
     RETURNING *
     `,
     [
-      name,
-      email,
-      mobile,
-      alt_email,
-      alt_mobile,
-      address,
-      city,
-      state,
-      country,
+      data.name ?? null,
+      data.email ?? null,
+      data.mobile ?? null,
+      data.alt_email ?? null,
+      data.alt_mobile ?? null,
+      data.address ?? null,
+      data.city ?? null,
+      data.state ?? null,
+      data.country ?? null,
       userId,
     ],
   );
@@ -94,25 +82,26 @@ const upsertCompany = async (userId, data) => {
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
     ON CONFLICT (user_id)
     DO UPDATE SET
-      company_name = EXCLUDED.company_name,
-      website = EXCLUDED.website,
-      gstin = EXCLUDED.gstin,
-      pan = EXCLUDED.pan,
-      facebook = EXCLUDED.facebook,
-      instagram = EXCLUDED.instagram,
-      google_business = EXCLUDED.google_business,
+      company_name = COALESCE(EXCLUDED.company_name, company_details.company_name),
+      website = COALESCE(EXCLUDED.website, company_details.website),
+      gstin = COALESCE(EXCLUDED.gstin, company_details.gstin),
+      pan = COALESCE(EXCLUDED.pan, company_details.pan),
+      facebook = COALESCE(EXCLUDED.facebook, company_details.facebook),
+      instagram = COALESCE(EXCLUDED.instagram, company_details.instagram),
+      google_business = COALESCE(EXCLUDED.google_business, company_details.google_business),
       updated_at = NOW()
+    WHERE company_details.user_id = $1
     RETURNING *
     `,
     [
       userId,
-      company_name,
-      website,
-      gstin,
-      pan,
-      facebook,
-      instagram,
-      google_business,
+      company_name ?? null,
+      website ?? null,
+      gstin ?? null,
+      pan ?? null,
+      facebook ?? null,
+      instagram ?? null,
+      google_business ?? null,
     ],
   );
 };
@@ -137,14 +126,21 @@ const upsertBank = async (userId, data) => {
     VALUES ($1,$2,$3,$4,$5)
     ON CONFLICT (user_id)
     DO UPDATE SET
-      ifsc_code = EXCLUDED.ifsc_code,
-      account_number = EXCLUDED.account_number,
-      bank_name = EXCLUDED.bank_name,
-      account_holder_name = EXCLUDED.account_holder_name,
+      ifsc_code = COALESCE(EXCLUDED.ifsc_code, bank_details.ifsc_code),
+      account_number = COALESCE(EXCLUDED.account_number, bank_details.account_number),
+      bank_name = COALESCE(EXCLUDED.bank_name, bank_details.bank_name),
+      account_holder_name = COALESCE(EXCLUDED.account_holder_name, bank_details.account_holder_name),
       updated_at = NOW()
+    WHERE bank_details.user_id = $1
     RETURNING *
     `,
-    [userId, ifsc_code, account_number, bank_name, account_holder_name],
+    [
+      userId,
+      ifsc_code ?? null,
+      account_number ?? null,
+      bank_name ?? null,
+      account_holder_name ?? null,
+    ],
   );
 };
 
