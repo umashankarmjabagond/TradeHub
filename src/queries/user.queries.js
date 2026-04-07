@@ -14,6 +14,7 @@ const getUserProfile = async (userId) => {
       city,
       state,
       country,
+      profile_pic,
       created_at
     FROM users
     WHERE id = $1

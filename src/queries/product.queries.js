@@ -260,6 +260,13 @@ const updateProductPrimaryImage = async (productId, imageUrl) => {
   ]);
 };
 
+const updateUserProfileImage = async (userId, imageUrl) => {
+  return query(
+    `UPDATE users SET profile_pic = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+    [imageUrl, userId],
+  );
+};
+
 const getProductDetails = async (productId) => {
   return query(
     `
@@ -311,4 +318,5 @@ module.exports = {
   setPrimaryImage,
   updateProductPrimaryImage,
   getProductDetails,
+  updateUserProfileImage,
 };
