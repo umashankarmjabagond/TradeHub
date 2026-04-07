@@ -1,12 +1,13 @@
 const streamifier = require("streamifier");
 const { cloudinary } = require("../../config/cloudinary");
 const crypto = require("crypto");
+const { updateUserProfileImage } = require("../../queries/product.queries");
 
 // helper function to upload buffer → cloudinary
-const uploadFromBuffer = (buffer) => {
+const uploadFromBuffer = (buffer, folder = "tradeHub/products") => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: "tradeHub/products" },
+      { folder }, // ✅ dynamic folder
       (error, result) => {
         if (result) resolve(result);
         else reject(error);
@@ -111,7 +112,6 @@ const getUploadSignature = async (req, res) => {
 const uploadProfileImage = async (req, res) => {
   try {
     const userId = req.user.id;
-
     const file = req.file;
 
     if (!file) {
@@ -120,7 +120,7 @@ const uploadProfileImage = async (req, res) => {
       });
     }
 
-    // upload using buffer (same pattern as product)
+    // upload to cloudinary
     const result = await uploadFromBuffer(
       file.buffer,
       `tradehub/users/${userId}`,
@@ -128,19 +128,12 @@ const uploadProfileImage = async (req, res) => {
 
     const imageUrl = result.secure_url;
 
-    // ✅ update user profile_pic
-    await query(
-      `
-      UPDATE users
-      SET profile_pic = $1, updated_at = NOW()
-      WHERE id = $2
-      `,
-      [imageUrl, userId],
-    );
+    // ✅ update DB using query file
+    const dbRes = await updateUserProfileImage(userId, imageUrl);
 
     return res.status(200).json({
       message: "Profile image uploaded successfully",
-      profile_pic: imageUrl,
+      profile_pic: dbRes.rows[0].profile_pic,
     });
   } catch (error) {
     console.error("Profile upload error:", error);
