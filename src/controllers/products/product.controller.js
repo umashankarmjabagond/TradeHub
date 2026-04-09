@@ -11,6 +11,8 @@ const {
   resetPrimaryImages,
   updateProductPrimaryImage,
   getProductDetails,
+  addProductView,
+  addSearchLog,
 } = require("../../queries/product.queries.js");
 
 const { uploadFromBuffer } = require("../../utils/helper.js");
