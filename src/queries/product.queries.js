@@ -302,6 +302,17 @@ const getProductDetails = async (productId) => {
   );
 };
 
+const getProductOwner = async (productId) => {
+  return query(
+    `
+    SELECT user_id
+    FROM products
+    WHERE id = $1 AND status = 'active'
+    `,
+    [productId],
+  );
+};
+
 module.exports = {
   searchProductsFromCategories,
   getLocationId,
@@ -319,4 +330,5 @@ module.exports = {
   updateProductPrimaryImage,
   getProductDetails,
   updateUserProfileImage,
+  getProductOwner,
 };
