@@ -6,7 +6,7 @@ const {
   clearCartQuery,
 } = require("../../queries/cart.query");
 
-// GET CART
+// GET CART DETAILS
 const getCart = async (req, res) => {
   try {
     const userId = req.user.id;
